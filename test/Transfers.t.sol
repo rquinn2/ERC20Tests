@@ -9,51 +9,6 @@ import {ERC20Impl} from "../src/ERC20Impl.sol";
 // Interface for ERC20 interface
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/*
-* ERC20TestWrappern wraps the token to be tested with frequent test conditions
-*
-* TODO
-*/
-/*
-contract ERC20TestWrapper{
-    IERC20 token;
-
-    constructor(address token) {
-        this.token = IERC20(token);
-    }
-
-    function name() public view returns (string) {
-        return token.name();
-    }
-    function symbol() public view returns (string) {
-        return token.symbol();
-    }
-    function decimals() public view returns (uint8) {
-        return token.decimals();
-    }
-    function totalSupply() public view returns (uint256) {
-        return token.totalSupply();
-    }
-    function balanceOf(address _owner) public view returns (uint256 balance) {
-        return token.balanceOf(_owner);
-    }
-    function transfer(address _to, uint256 _value) public returns (bool success) {
-        return token.transfer(_to, _value);
-    }
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success) {
-        return token.transferFrom(_from, _to, _value);
-    }
-    function approve(address _spender, uint256 _value) public returns (bool success) {
-        return token.approve(_spender, _value);
-    }
-    function allowance(address _owner, address _spender) public view returns (uint256 remaining) {
-        return token.allowance(_owner, _spender);
-    }
-
-}
-*/
-
-
 contract Transfer is Test {
 
     IERC20 internal ierc20;
@@ -63,23 +18,26 @@ contract Transfer is Test {
     uint256 internal initialSupply = 1000 ether;
 
     function setUp() public {
-        sender = vm.addr(1); 
+        sender = vm.addr(1);
         receiver = vm.addr(2);
         vm.startPrank(sender);
-        token = new ERC20Impl(initialSupply);  
+        token = new ERC20Impl(initialSupply);
         vm.stopPrank();
         ierc20 = IERC20(address(token));
     }
 
-    /* 
-    * Invariant testing for total supply currently assumes
-    * that there is no minting or burning of tokens 
-    * As these are not neccesarily part of the ERC20 interface per EIP-20
+    /** 
+    *   @dev Checks the total supply remains constant.
+    *   Assumes no minting/burning beyond initial supply.
     */
     function invariant_TotalSupply() public view {
         assertEq(ierc20.totalSupply(), initialSupply, "Total supply not correct");
     }
 
+    /**
+    *  @dev Tests a standard token transfer between two accounts.
+    *  @param _amount The amount of tokens to transfer. 
+    */
     function test_Transfer(uint256 _amount) public {
         uint256 senderInitBal = ierc20.balanceOf(sender);
         vm.assume(_amount <= senderInitBal);
@@ -90,23 +48,59 @@ contract Transfer is Test {
         bool transferPossible = ierc20.transfer(receiver, _amount);
         vm.stopPrank();
 
-        assertEq(transferPossible, true, "ERC20 violation: transfer returned false");
-        assertEq(ierc20.balanceOf(receiver), _amount ,"Receiver balance not correct");
-        assertEq(ierc20.balanceOf(sender), senderInitBal - _amount, "Sender balance not correct");
+        assertEq(transferPossible, true, "transfer returned false");
+        assertEq(ierc20.balanceOf(receiver), _amount ,"Receiver balance incorrect");
+        assertEq(ierc20.balanceOf(sender), senderInitBal - _amount, "Sender balance incorrect");
     }
     
+    /**
+    *  @dev Tests transferring zero tokens. Checks balances.
+    */
     function test_Zero() public {
         uint256 senderInitBal = ierc20.balanceOf(sender);
 
         vm.startPrank(sender);
+        vm.expectEmit(true, true, false, true, address(ierc20));
+        emit IERC20.Transfer(address(sender), address(receiver), 0);
         bool transferPossible = ierc20.transfer(receiver, 0);
         vm.stopPrank();
 
-        assertEq(transferPossible, true, "ERC20 violation: transfer returned false");
-        assertEq(ierc20.balanceOf(receiver), 0,"Receiver balance not correct");
-        assertEq(ierc20.balanceOf(sender), senderInitBal, "Sender balance not correct");
+        assertEq(transferPossible, true, "transfer returned false");
+        assertEq(ierc20.balanceOf(receiver), 0,"Receiver balance incorrect");
+        assertEq(ierc20.balanceOf(sender), senderInitBal, "Sender balance incorrect");
     }
+     function test_MultipleTransfers(uint256 _amount1, uint256 _amount2) public {
+        uint256 senderInitBal = ierc20.balanceOf(sender);
+        vm.assume(_amount1 <= senderInitBal);
 
+        vm.startPrank(sender);
+        vm.expectEmit(true, true, false, true, address(ierc20));
+        emit IERC20.Transfer(address(sender), address(receiver), _amount1);
+        bool transferPossible1 = ierc20.transfer(receiver, _amount1);
+        vm.stopPrank();
+
+        assertEq(transferPossible1, true, "Transfer 1 returned false");
+        assertEq(ierc20.balanceOf(receiver), _amount1, "Receiver balance incorrect");
+        assertEq(ierc20.balanceOf(sender), senderInitBal - _amount1, "Sender balance incorrect");
+
+        // Limit the second transfer to viable amounts after the first.
+        vm.assume(_amount2 <= ierc20.balanceOf(sender));
+
+        vm.startPrank(sender);
+        vm.expectEmit(true, true, false, true, address(ierc20));
+        emit IERC20.Transfer(address(sender), address(receiver), _amount2);
+        bool transferPossible2 = ierc20.transfer(receiver, _amount2);
+        vm.stopPrank();
+
+        assertEq(transferPossible2, true, "Transfer 2 returned false");
+        assertEq(ierc20.balanceOf(receiver), _amount1 + _amount2, "Receiver balance incorrect");
+        assertEq(ierc20.balanceOf(sender), senderInitBal - _amount1 - _amount2, "Sender balance incorrect");
+     }
+
+    /**
+    *  @dev Tests revert when transferring to the zero address.
+    *  @param _amount The amount of tokens to transfer. 
+    */
     function test_RevertFrom_ToNull(uint256 _amount) public {
         vm.assume(_amount <= ierc20.balanceOf(sender));
 
@@ -118,6 +112,10 @@ contract Transfer is Test {
         assertEq(transferPossible, false, "Transfer returned true");
     }
 
+    /**
+    *  @dev Checks for revert - insufficient balance.
+    *  @param _amount The amount of tokens to transfer. 
+    */
     function test_RevertFrom_insuffBalance(uint256 _amount) public {
         uint256 senderInitBal = ierc20.balanceOf(sender);
         vm.assume(_amount > senderInitBal);
@@ -142,22 +140,27 @@ contract TransferFrom is Test {
     uint256 internal spenderAllowance = 50 ether;
 
     function setUp() public {
-        spender = vm.addr(1); 
+        spender = vm.addr(1);
         receiver = vm.addr(2);
-        owner = vm.addr(3); 
+        owner = vm.addr(3);
 
         vm.startPrank(owner);
-        token = new ERC20Impl(ownerInitBal);  
+        token = new ERC20Impl(ownerInitBal);
         ierc20 = IERC20(address(token));
         bool approved = ierc20.approve(spender, spenderAllowance);
         vm.stopPrank();
-        vm.assertEq(approved, true, "Test setup failed: Could not approve spender");
+        vm.assertEq(approved, true, "Test setup failed: Could not approve");
     }
 
+    // Checks that the total supply is constant
     function invariant_TotalSupply() public view {
         assertEq(ierc20.totalSupply(), ownerInitBal, "Total supply not correct");
     }
 
+    /**
+    *  @dev Tests `transferFrom`.
+    *  @param _amount Amount to transfer. Within spender's allowance.
+    */
     function test_Transfer(uint256 _amount) public {
         vm.assume(_amount < spenderAllowance);
 
@@ -168,12 +171,45 @@ contract TransferFrom is Test {
         vm.stopPrank();
 
         assertEq(transferPossible, true, "Transfer returned false");
-        assertEq(ierc20.balanceOf(receiver), _amount ,"Receiver balance not correct");
-        assertEq(ierc20.balanceOf(owner), ownerInitBal - _amount, "Owner balance not correct");
+        assertEq(ierc20.balanceOf(receiver), _amount ,"Receiver balance incorrect");
+        assertEq(ierc20.balanceOf(owner), ownerInitBal - _amount, "Owner balance incorrect");
     }
 
 
-    function test_TransferZero() public {
+function test_MultipleTransfers(uint256 _amount1, uint256 _amount2) public {
+    // Ensure _amount1 is valid
+    vm.assume(_amount1 <= spenderAllowance);
+    vm.assume(_amount1 <= ownerInitBal);
+
+    vm.startPrank(spender);
+    vm.expectEmit(true, true, false, true, address(ierc20));
+    emit IERC20.Transfer(address(owner), address(receiver), _amount1);
+    bool transferPossible1 = ierc20.transferFrom(owner, receiver, _amount1);
+    vm.stopPrank();
+
+    assertEq(transferPossible1, true, "Transfer 1 returned false");
+    assertEq(ierc20.balanceOf(receiver), _amount1, "Receiver balance incorrect");
+    assertEq(ierc20.balanceOf(owner), ownerInitBal - _amount1, "Owner balance incorrect");
+
+    // Limit the second transfer to viable amounts after the first. 
+    vm.assume(_amount2 <= ierc20.balanceOf(owner));
+    vm.assume(_amount2 <= ierc20.allowance(owner, spender));
+
+    vm.startPrank(spender);
+    vm.expectEmit(true, true, false, true, address(ierc20));
+    emit IERC20.Transfer(address(owner), address(receiver), _amount2);
+    bool transferPossible2 = ierc20.transferFrom(owner, receiver, _amount2);
+    vm.stopPrank();
+
+    assertEq(transferPossible2, true, "Transfer 2 returned false");
+    assertEq(ierc20.balanceOf(receiver), _amount1 + _amount2, "Receiver balance incorrect");
+    assertEq(ierc20.balanceOf(owner), ownerInitBal - _amount1 - _amount2, "Owner balance incorrect");
+}
+
+    /**
+    *  @dev Tests a zero-value transferFrom. Checks balances.
+    */
+    function test_Zero() public {
         vm.startPrank(spender);
         vm.expectEmit(true, true, false, true, address(ierc20));
         emit IERC20.Transfer(address(owner), address(receiver), 0);
@@ -181,10 +217,15 @@ contract TransferFrom is Test {
         vm.stopPrank();
 
         assertEq(transferPossible, true, "Transfer returned false");
-        assertEq(ierc20.balanceOf(receiver), 0,"Receiver balance not correct");
-        assertEq(ierc20.balanceOf(owner), ownerInitBal, "owner balance not correct");
+        assertEq(ierc20.balanceOf(receiver), 0,"Receiver balance incorrect");
+        assertEq(ierc20.balanceOf(owner), ownerInitBal, "Owner balance incorrect");
     }
 
+
+    /**
+    *  @dev Checks for revert - insufficient balance.
+    *  @param _amount Amount to transfer.  More than owner's balance.
+    */
     function test_RevertFrom_insufBalance(uint256 _amount) public {
         vm.assume(_amount > ownerInitBal);
 
@@ -195,6 +236,10 @@ contract TransferFrom is Test {
         assertEq(transferPossible, false, "Transfer returned true");
     }
 
+    /**
+    *  @dev Checks for revert - insufficient allowance.
+    *  @param _amount To transfer. Exceeds spender's allowance.
+    */
     function test_RevertFrom_insufAllowance(uint256 _amount) public {
         vm.assume(_amount > spenderAllowance);
 
