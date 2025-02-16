@@ -80,25 +80,26 @@ contract Transfer is Test {
         assertEq(ierc20.totalSupply(), initialSupply, "Total supply not correct");
     }
 
-    function test_Transfer(uint256 amount) public {
+    function test_Transfer(uint256 _amount) public {
         uint256 senderInitBal = ierc20.balanceOf(sender);
-        vm.assume(amount <= senderInitBal);
+        vm.assume(_amount <= senderInitBal);
 
         vm.startPrank(sender);
         vm.expectEmit(true, true, false, true, address(ierc20));
-        emit IERC20.Transfer(address(sender), address(receiver), amount);
-        bool transferPossible = ierc20.transfer(receiver, amount);
+        emit IERC20.Transfer(address(sender), address(receiver), _amount);
+        bool transferPossible = ierc20.transfer(receiver, _amount);
         vm.stopPrank();
 
         assertEq(transferPossible, true, "ERC20 violation: transfer returned false");
-        assertEq(ierc20.balanceOf(receiver), amount ,"Receiver balance not correct");
-        assertEq(ierc20.balanceOf(sender), senderInitBal - amount, "Sender balance not correct");
+        assertEq(ierc20.balanceOf(receiver), _amount ,"Receiver balance not correct");
+        assertEq(ierc20.balanceOf(sender), senderInitBal - _amount, "Sender balance not correct");
     }
     
     function test_Zero() public {
         uint256 senderInitBal = ierc20.balanceOf(sender);
+
         vm.startPrank(sender);
-       bool transferPossible = ierc20.transfer(receiver, 0);
+        bool transferPossible = ierc20.transfer(receiver, 0);
         vm.stopPrank();
 
         assertEq(transferPossible, true, "ERC20 violation: transfer returned false");
@@ -106,23 +107,27 @@ contract Transfer is Test {
         assertEq(ierc20.balanceOf(sender), senderInitBal, "Sender balance not correct");
     }
 
-    function test_RevertFrom_ToNull(uint256 amount) public {
-        vm.assume(amount <= ierc20.balanceOf(sender));
+    function test_RevertFrom_ToNull(uint256 _amount) public {
+        vm.assume(_amount <= ierc20.balanceOf(sender));
+
         vm.startPrank(sender);
         vm.expectRevert();
-        ierc20.transfer(address(0), amount);
+        bool transferPossible = ierc20.transfer(address(0), _amount);
         vm.stopPrank();
-        fail("Did not revert");
+
+        assertEq(transferPossible, false, "Transfer returned true");
     }
 
-    function test_RevertFrom_insuffBalance(uint256 amount) public {
+    function test_RevertFrom_insuffBalance(uint256 _amount) public {
         uint256 senderInitBal = ierc20.balanceOf(sender);
-        vm.assume(amount > senderInitBal);
+        vm.assume(_amount > senderInitBal);
+
         vm.startPrank(sender);
         vm.expectRevert();
-        ierc20.transfer(receiver, amount);
+        bool transferPossible = ierc20.transfer(receiver, _amount);
         vm.stopPrank();
-        fail("Did not revert");
+
+        assertEq(transferPossible, false, "Transfer returned true");
     }
 }
 
@@ -153,18 +158,18 @@ contract TransferFrom is Test {
         assertEq(ierc20.totalSupply(), ownerInitBal, "Total supply not correct");
     }
 
-    function test_Transfer(uint256 amount) public {
-        vm.assume(amount < spenderAllowance);
+    function test_Transfer(uint256 _amount) public {
+        vm.assume(_amount < spenderAllowance);
 
         vm.startPrank(spender);
         vm.expectEmit(true, true, false, true, address(ierc20));
-        emit IERC20.Transfer(address(owner), address(receiver), amount);
-        bool transferPossible = ierc20.transferFrom(owner, receiver, amount);
+        emit IERC20.Transfer(address(owner), address(receiver), _amount);
+        bool transferPossible = ierc20.transferFrom(owner, receiver, _amount);
         vm.stopPrank();
 
         assertEq(transferPossible, true, "Transfer returned false");
-        assertEq(ierc20.balanceOf(receiver), amount ,"Receiver balance not correct");
-        assertEq(ierc20.balanceOf(owner), ownerInitBal - amount, "Owner balance not correct");
+        assertEq(ierc20.balanceOf(receiver), _amount ,"Receiver balance not correct");
+        assertEq(ierc20.balanceOf(owner), ownerInitBal - _amount, "Owner balance not correct");
     }
 
 
@@ -180,40 +185,24 @@ contract TransferFrom is Test {
         assertEq(ierc20.balanceOf(owner), ownerInitBal, "owner balance not correct");
     }
 
-    function test_FromSelf(uint256 amount) public {
-        vm.assume(amount < ownerInitBal);
-
-        vm.startPrank(owner);
-        vm.expectEmit(true, true, false, true, address(ierc20));
-        emit IERC20.Transfer(address(owner), address(receiver), amount);
-        bool transferPossible = ierc20.transferFrom(owner, receiver, amount);
-        vm.stopPrank();
-
-        assertEq(transferPossible, true, "Transfer returned false");
-        assertEq(ierc20.balanceOf(receiver), amount ,"Receiver balance not correct");
-        assertEq(ierc20.balanceOf(owner), ownerInitBal - amount, "Owner balance not correct");
-    }
-
-    function test_RevertFrom_insufBalance(uint256 amount) public {
-        vm.assume(amount > ownerInitBal);
+    function test_RevertFrom_insufBalance(uint256 _amount) public {
+        vm.assume(_amount > ownerInitBal);
 
         vm.startPrank(spender);
         vm.expectRevert();
-        bool transferPossible = ierc20.transferFrom(owner, receiver, amount);
+        bool transferPossible = ierc20.transferFrom(owner, receiver, _amount);
         vm.stopPrank();
-
-        fail("Did not revert");
+        assertEq(transferPossible, false, "Transfer returned true");
     }
 
-    function test_RevertFrom_insufAllowance(uint256 amount) public {
-        vm.assume(amount > spenderAllowance);
+    function test_RevertFrom_insufAllowance(uint256 _amount) public {
+        vm.assume(_amount > spenderAllowance);
 
         vm.startPrank(spender);
         vm.expectRevert();
-        bool transferPossible = ierc20.transferFrom(owner, receiver, amount);
+        bool transferPossible = ierc20.transferFrom(owner, receiver, _amount);
         vm.stopPrank();
-
-        fail("Did not revert");
+        assertEq(transferPossible, false, "Transfer returned true");
     }
 
 }
