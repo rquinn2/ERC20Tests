@@ -11,12 +11,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract BalanceOf is Test {
 
-    IERC20 public ierc20;
-    ERC20Impl public token;
-    address public owner;
-    address public spender;
-    uint256 public ownerInitBal = 100 ether;
-    uint256 public spenderAllowance = 50 ether;
+    IERC20 internal ierc20;
+    ERC20Impl internal token;
+    address internal owner;
+    address internal spender;
+    uint256 internal ownerInitBal = 100 ether;
+    uint256 internal spenderAllowance = 50 ether;
 
     function setUp() public {
         spender = vm.addr(1); 
@@ -41,12 +41,12 @@ contract BalanceOf is Test {
 
 contract TotalSupply is Test {
 
-    IERC20 public ierc20;
-    ERC20Impl public token;
-    address public owner;
-    address public spender;
-    uint256 public ownerInitBal = 100 ether;
-    uint256 public spenderAllowance = 50 ether;
+    IERC20 internal ierc20;
+    ERC20Impl internal token;
+    address internal owner;
+    address internal spender;
+    uint256 internal ownerInitBal = 100 ether;
+    uint256 internal spenderAllowance = 50 ether;
 
     function setUp() public {
         spender = vm.addr(1); 

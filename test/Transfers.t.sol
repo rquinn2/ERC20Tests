@@ -56,11 +56,11 @@ contract ERC20TestWrapper{
 
 contract Transfer is Test {
 
-    IERC20 public ierc20;
-    ERC20Impl public token;
-    address public sender;
-    address public receiver;
-    uint256 public initialSupply = 1000 ether;
+    IERC20 internal ierc20;
+    ERC20Impl internal token;
+    address internal sender;
+    address internal receiver;
+    uint256 internal initialSupply = 1000 ether;
 
     function setUp() public {
         sender = vm.addr(1); 
@@ -133,13 +133,13 @@ contract Transfer is Test {
 
 contract TransferFrom is Test {
 
-    IERC20 public ierc20;
-    ERC20Impl public token;
-    address public owner;
-    address public spender;
-    address public receiver;
-    uint256 public ownerInitBal = 100 ether;
-    uint256 public spenderAllowance = 50 ether;
+    IERC20 internal ierc20;
+    ERC20Impl internal token;
+    address internal owner;
+    address internal spender;
+    address internal receiver;
+    uint256 internal ownerInitBal = 100 ether;
+    uint256 internal spenderAllowance = 50 ether;
 
     function setUp() public {
         spender = vm.addr(1); 
@@ -204,5 +204,4 @@ contract TransferFrom is Test {
         vm.stopPrank();
         assertEq(transferPossible, false, "Transfer returned true");
     }
-
 }
