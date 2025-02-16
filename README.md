@@ -1,5 +1,5 @@
 # ERC20 Tests
-This repository contains a set of tests utilizing Anvil and more generally the Foundry suite in order to implement an ERC20 test suite. To spool up a local Anvil node and run the tests:
+This repository contains a set of tests utilizing Anvil and more generally the [Foundry suite](https://github.com/foundry-rs/foundry) in order to implement an ERC20 test suite. To spool up a local Anvil node and run the tests:
 
 ```
 ./run_tests_anvil.sh
